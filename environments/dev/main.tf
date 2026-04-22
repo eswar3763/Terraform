@@ -1,14 +1,23 @@
-provider "azurerm" {
-  features {}
+# Dev Environment - Main Configuration
 
-  subscription_id = var.subscription_id
-  client_id       = var.client_id
-  client_secret   = var.client_secret
-  tenant_id       = var.tenant_id
+# Create Resource Group
+resource "azurerm_resource_group" "env_rg" {
+  name     = var.resource_group_name
+  location = var.location
+
+  tags = {
+    Environment = var.environment
+    Project     = "Terraform-Azure"
+    CreatedBy   = "Terraform"
+  }
 }
 
-# Add your resources here
-# Example: resource "azurerm_resource_group" "example" {
-#   name     = "example-rg"
-#   location = "East US"
+# Add your resources here or call modules
+# Example:
+# module "network" {
+#   source = "../../modules/network"
+#   
+#   resource_group_name = azurerm_resource_group.env_rg.name
+#   location            = azurerm_resource_group.env_rg.location
+#   environment         = var.environment
 # }

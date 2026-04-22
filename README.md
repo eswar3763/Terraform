@@ -1,17 +1,45 @@
 # Terraform Azure Infrastructure
 
-This repository contains Terraform configurations for managing Azure cloud infrastructure across Dev and Prod environments.
+This repository contains Terraform configurations for managing Azure cloud infrastructure across multiple environments using reusable modules.
 
 ## Folder Structure
 
-- `environments/dev/`: Terraform configuration for the Development environment
-- `environments/prod/`: Terraform configuration for the Production environment
-- `environments/uat/`: Terraform configuration for the User Acceptance Testing environment
-- `global/`: Global configurations and shared settings
-- `modules/`: Reusable Terraform modules
-- `secrets/`: Sensitive configuration files (not committed to Git)
-- `shared/`: Shared configurations and scripts
-- `versions.tf`: Terraform version and provider requirements
+```
+terraform/
+├── modules/
+│   ├── network/              # Virtual Network and Subnets
+│   ├── aks/                  # Azure Kubernetes Service
+│   ├── acr/                  # Azure Container Registry
+│   └── keyvault/             # Azure Key Vault
+│
+├── environments/
+│   ├── dev/                  # Development environment
+│   │   ├── main.tf
+│   │   ├── backend.tf
+│   │   ├── variables.tf
+│   │   └── terraform.tfvars
+│   │
+│   ├── staging/              # Staging environment
+│   │   ├── main.tf
+│   │   ├── backend.tf
+│   │   ├── variables.tf
+│   │   └── terraform.tfvars
+│   │
+│   └── prod/                 # Production environment
+│       ├── main.tf
+│       ├── backend.tf
+│       ├── variables.tf
+│       └── terraform.tfvars
+│
+├── global/
+│   ├── providers.tf          # Azure Provider configuration
+│   └── versions.tf           # Terraform version and provider requirements
+│
+├── secrets/                  # Sensitive files (git-ignored)
+├── shared/                   # Shared configurations and scripts
+├── .gitignore
+└── README.md
+```
 
 ## Getting Started
 
@@ -30,8 +58,30 @@ This repository contains Terraform configurations for managing Azure cloud infra
 ## Environments
 
 - **Dev**: Development environment for testing and development
+- **Staging**: Staging environment for pre-production validation
 - **Prod**: Production environment for live workloads
-- **UAT**: User Acceptance Testing environment for pre-production validation
+
+## Available Modules
+
+### Network Module
+Manages Azure Virtual Networks and Subnets
+- **Location**: `modules/network/`
+- **Resources**: VNet, Subnets
+
+### AKS Module
+Manages Azure Kubernetes Service clusters
+- **Location**: `modules/aks/`
+- **Resources**: Kubernetes cluster with system-assigned identity
+
+### ACR Module
+Manages Azure Container Registry
+- **Location**: `modules/acr/`
+- **Resources**: Container registry with configurable SKU
+
+### KeyVault Module
+Manages Azure Key Vault for secrets management
+- **Location**: `modules/keyvault/`
+- **Resources**: Key Vault with RBAC and purge protection
 
 ## Secrets Management
 

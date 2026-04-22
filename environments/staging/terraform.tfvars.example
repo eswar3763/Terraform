@@ -8,4 +8,6 @@ client_secret   = "your-client-secret"
 tenant_id       = "your-tenant-id"
 
 # Environment
-environment = "uat"
+environment = "staging"
+resource_group_name = "rg-terraform-staging"
+location = "East US"

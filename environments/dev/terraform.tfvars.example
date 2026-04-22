@@ -9,3 +9,5 @@ tenant_id       = "your-tenant-id"
 
 # Environment
 environment = "dev"
+resource_group_name = "rg-terraform-dev"
+location = "East US"

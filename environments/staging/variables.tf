@@ -1,3 +1,5 @@
+# Staging Environment - Variables
+
 variable "subscription_id" {
   description = "Azure Subscription ID"
   type        = string
@@ -22,5 +24,16 @@ variable "tenant_id" {
 variable "environment" {
   description = "Environment name"
   type        = string
-  default     = "uat"
+  default     = "staging"
+}
+
+variable "resource_group_name" {
+  description = "Name of the resource group"
+  type        = string
+}
+
+variable "location" {
+  description = "Azure region"
+  type        = string
+  default     = "East US"
 }

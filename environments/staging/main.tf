@@ -1,4 +1,4 @@
-# Prod Environment - Main Configuration
+# Staging Environment - Main Configuration
 
 # Create Resource Group
 resource "azurerm_resource_group" "env_rg" {
