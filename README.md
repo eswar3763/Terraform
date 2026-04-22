@@ -17,10 +17,15 @@ This repository contains Terraform configurations for managing Azure cloud infra
 
 1. Install Terraform (version >= 1.0)
 2. Configure Azure CLI: `az login`
-3. Navigate to the desired environment: `cd environments/dev`
-4. Initialize: `terraform init`
-5. Plan: `terraform plan`
-6. Apply: `terraform apply`
+3. Copy the example variables file and add your credentials:
+   ```bash
+   cp environments/dev/terraform.tfvars.example environments/dev/terraform.tfvars
+   # Edit the file with your actual Azure credentials
+   ```
+4. Navigate to the desired environment: `cd environments/dev`
+5. Initialize: `terraform init`
+6. Plan: `terraform plan`
+7. Apply: `terraform apply`
 
 ## Environments
 

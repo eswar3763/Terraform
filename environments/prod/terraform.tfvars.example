@@ -1,0 +1,11 @@
+# Azure Service Principal credentials
+# IMPORTANT: Do NOT commit actual credentials. This is a template file.
+# Copy this to terraform.tfvars and fill in your actual values.
+
+subscription_id = "your-subscription-id"
+client_id       = "your-client-id"
+client_secret   = "your-client-secret"
+tenant_id       = "your-tenant-id"
+
+# Environment
+environment = "prod"
