@@ -1,13 +1,71 @@
-# Azure Service Principal credentials
+# Production Environment - Example Terraform Variables
+# Copy this file to terraform.tfvars and fill in actual values
 # IMPORTANT: Do NOT commit actual credentials. This is a template file.
-# Copy this to terraform.tfvars and fill in your actual values.
 
-subscription_id = "your-subscription-id"
-client_id       = "your-client-id"
-client_secret   = "your-client-secret"
-tenant_id       = "your-tenant-id"
+# Azure Service Principal Credentials
+subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+client_id       = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+client_secret   = "your-service-principal-secret-here"
+tenant_id       = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
-# Environment
+# Environment and Location
 environment = "prod"
-resource_group_name = "rg-terraform-prod"
-location = "East US"
+location    = "East US"
+
+# Resource Group
+resource_group_name = "rg-3tier-app-prod"
+
+# Network Configuration
+vnet_name              = "vnet-prod"
+vnet_address_space     = ["10.2.0.0/16"]
+subnet_name            = "subnet-prod"
+subnet_address_prefix  = "10.2.1.0/24"
+
+# Key Vault (Premium for production)
+keyvault_name = "kv3tierapp-prod"
+
+# Container Registry (Premium for production)
+acr_name = "acr3tierappprod"
+
+# AKS Cluster (HA with 3+ nodes across AZs)
+aks_cluster_name = "aks-3tier-prod"
+aks_dns_prefix   = "aks3tierprod"
+kubernetes_version = "1.27"
+# Add your organization's IP ranges for API server access
+api_server_authorized_ips = ["1.2.3.4/32", "5.6.7.0/24"]
+
+# MySQL Database (Memory-optimized with HA)
+mysql_server_name = "mysql-3tier-prod"
+mysql_database_name = "appdb"
+mysql_admin_username = "azureuser"
+mysql_admin_password = "P@ssw0rd1234567890"
+
+# Storage Account (RAGRS replication for DR)
+storage_account_name = "st3tierappprod"
+
+# Function App (Premium plan)
+function_app_name = "func-3tier-prod"
+function_plan_name = "asp-func-3tier-prod"
+
+# App Service (Premium plan P1v2)
+app_service_plan_name = "asp-3tier-prod"
+app_service_name      = "app-3tier-prod"
+
+# Monitoring (Log Analytics required for production)
+log_analytics_workspace_id = "/subscriptions/xxx/resourcegroups/xxx/providers/microsoft.operationalinsights/workspaces/xxx"
+
+# Application Gateway Configuration (Production with WAF Prevention mode)
+app_gateway_name           = "appgw-3tier-prod"
+app_gateway_sku_name       = "Standard_v2"
+app_gateway_sku_tier       = "Standard_v2"
+app_gateway_capacity       = 2
+appgw_private_ip_address   = "10.2.2.5"
+app_gateway_host_names     = ["myapp.com", "www.myapp.com"]
+app_gateway_path_based_routing = true
+enable_waf                 = true
+waf_mode                   = "Prevention"  # Prevention mode for production
+# certificate_secret_id = "https://kvname.vault.azure.net/secrets/cert-name/version"  # REQUIRED for production
+
+# Load Balancer Configuration (HA Setup)
+load_balancer_name = "lb-3tier-prod"
+load_balancer_sku  = "Standard"

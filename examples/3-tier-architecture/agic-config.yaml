@@ -1,0 +1,190 @@
+# AGIC (Application Gateway Ingress Controller) Configuration
+# This manifest sets up AGIC to manage Application Gateway from Kubernetes
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agic-system
+---
+
+# ConfigMap for AGIC Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agic-config
+  namespace: agic-system
+data:
+  # Application Gateway subscription ID
+  AZURE_SUBSCRIPTION_ID: "YOUR_SUBSCRIPTION_ID"
+  
+  # Application Gateway resource group
+  AZURE_RESOURCE_GROUP: "rg-3tier-app-dev"
+  
+  # Application Gateway name
+  AZURE_APPGW_NAME: "appgw-3tier-dev"
+  
+  # Use managed identity for authentication
+  USE_MANAGED_IDENTITY: "true"
+  
+  # AGIC replica count
+  AGIC_REPLICA_COUNT: "1"
+
+---
+
+# ClusterRole for AGIC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agic-clusterrole
+  namespace: agic-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - services/status
+  verbs:
+  - update
+  - patch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingressclasses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingressclasses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+
+---
+
+# ServiceAccount for AGIC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agic-serviceaccount
+  namespace: agic-system
+
+---
+
+# ClusterRoleBinding for AGIC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: agic-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: agic-clusterrole
+subjects:
+- kind: ServiceAccount
+  name: agic-serviceaccount
+  namespace: agic-system
+
+---
+
+# IngressClass for Application Gateway
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: azure-application-gateway
+spec:
+  controller: azure/application-gateway
+
+---
+
+# Default IngressClass for AKS
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: azure-application-gateway-default
+spec:
+  controller: azure/application-gateway
+  parameters:
+    apiGroup: azure.com/agic
+    kind: AzureApplicationGatewaySpec
+    name: azure-appgw-spec
+---
+
+# Helm Chart Installation (alternative to kubectl apply)
+# Run these Helm commands instead of applying the above:
+#
+# 1. Add AGIC Helm repository:
+#    helm repo add application-gateway-kubernetes-ingress https://appgwk8s.blob.core.windows.net/helm/
+#    helm repo update
+#
+# 2. Install AGIC:
+#    helm install agic application-gateway-kubernetes-ingress/ingress-azure \
+#      --namespace agic-system \
+#      --create-namespace \
+#      --set appgw.subscriptionId="<SUBSCRIPTION_ID>" \
+#      --set appgw.resourceGroup="rg-3tier-app-dev" \
+#      --set appgw.name="appgw-3tier-dev" \
+#      --set rbac.enabled=true \
+#      --set armAuth.type=managedIdentity \
+#      --set armAuth.identityResourceID="<AGIC_IDENTITY_RESOURCE_ID>" \
+#      --set armAuth.identityClientID="<AGIC_CLIENT_ID>"
+#
+# 3. Verify installation:
+#    kubectl get pods -n agic-system
+#    kubectl logs deployment/agic -n agic-system

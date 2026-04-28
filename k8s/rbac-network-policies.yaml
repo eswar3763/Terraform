@@ -1,0 +1,430 @@
+# Kubernetes RBAC Configuration
+# Purpose: Control access to Kubernetes resources for different teams/roles
+
+---
+# Namespace and basic RBAC structure
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: three-tier-app
+  labels:
+    app: three-tier
+    environment: dev/staging/prod
+
+---
+# ServiceAccount for Developers (Dev environment)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dev-team-sa
+  namespace: three-tier-app
+
+---
+# ServiceAccount for DevOps/Pipeline
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pipeline-deployer-sa
+  namespace: three-tier-app
+
+---
+# ServiceAccount for Application Monitoring
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: monitoring-sa
+  namespace: three-tier-app
+
+---
+# ServiceAccount for AGIC (Application Gateway Ingress Controller)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agic-sa
+  namespace: kube-system
+
+# ═══════════════════════════════════════════════════════════════════════════
+# DEV ENVIRONMENT RBAC - DEVELOPER TEAM (Read + Deploy to Dev only)
+# ═══════════════════════════════════════════════════════════════════════════
+
+---
+# Role for Dev Team - Can view and manage deployments in dev
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dev-team-role
+  namespace: three-tier-app
+rules:
+  # Pods and Deployments
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  
+  # Services and Ingress
+  - apiGroups: ["", "networking.k8s.io"]
+    resources: ["services", "ingresses"]
+    verbs: ["get", "list", "watch"]
+  
+  # ConfigMaps (read-only - no secrets)
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  
+  # Pods (view logs, exec)
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/exec"]
+    verbs: ["get", "list", "watch", "create"]
+  
+  # Events and debugging
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+
+---
+# RoleBinding for Dev Team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dev-team-rolebinding
+  namespace: three-tier-app
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dev-team-role
+subjects:
+  - kind: ServiceAccount
+    name: dev-team-sa
+    namespace: three-tier-app
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PIPELINE DEPLOYER RBAC - CI/CD Pipeline (Full deploy access)
+# ═══════════════════════════════════════════════════════════════════════════
+
+---
+# Role for Pipeline - Can manage all resources for deployment
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pipeline-deployer-role
+  namespace: three-tier-app
+rules:
+  # Full access to deployments and related
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Services and Ingress management
+  - apiGroups: ["", "networking.k8s.io"]
+    resources: ["services", "ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Secrets and ConfigMaps
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Pods management
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "delete"]
+  
+  # Persistent Volumes
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  
+  # HPA and scaling
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  
+  # Events
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "patch"]
+
+---
+# RoleBinding for Pipeline
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pipeline-deployer-rolebinding
+  namespace: three-tier-app
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pipeline-deployer-role
+subjects:
+  - kind: ServiceAccount
+    name: pipeline-deployer-sa
+    namespace: three-tier-app
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MONITORING RBAC - Read-only access for monitoring tools
+# ═══════════════════════════════════════════════════════════════════════════
+
+---
+# Role for Monitoring - Read-only access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: monitoring-role
+  namespace: three-tier-app
+rules:
+  # Read all resources
+  - apiGroups: ["", "apps", "batch"]
+    resources: ["pods", "deployments", "jobs", "statefulsets", "services"]
+    verbs: ["get", "list", "watch"]
+  
+  # Pod metrics
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+  
+  # Events (for troubleshooting)
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+
+---
+# RoleBinding for Monitoring
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: monitoring-rolebinding
+  namespace: three-tier-app
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: monitoring-role
+subjects:
+  - kind: ServiceAccount
+    name: monitoring-sa
+    namespace: three-tier-app
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PRODUCTION ENVIRONMENT RBAC - RESTRICTED ACCESS
+# ═══════════════════════════════════════════════════════════════════════════
+
+---
+# ClusterRole for Production - Restricted access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prod-restricted-role
+rules:
+  # Can only read, no modifications
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
+    verbs: ["get", "list", "watch"]
+  
+  # Emergency patching only (requires additional approval)
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["get", "patch"]
+  
+  # Can read but not modify secrets
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  
+  # Monitoring only
+  - apiGroups: ["", "metrics.k8s.io"]
+    resources: ["pods", "events", "services"]
+    verbs: ["get", "list", "watch"]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# AGIC RBAC - Application Gateway Ingress Controller
+# ═══════════════════════════════════════════════════════════════════════════
+
+---
+# ClusterRole for AGIC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agic-clusterrole
+  namespace: kube-system
+rules:
+  # Read ingress resources
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+  
+  # Read services and endpoints
+  - apiGroups: ["", "networking.k8s.io"]
+    resources: ["services", "endpoints", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  
+  # Read events
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  
+  # Read ingress classes
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingressclasses"]
+    verbs: ["get", "list", "watch"]
+
+---
+# ClusterRoleBinding for AGIC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: agic-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: agic-clusterrole
+subjects:
+  - kind: ServiceAccount
+    name: agic-sa
+    namespace: kube-system
+
+# ═══════════════════════════════════════════════════════════════════════════
+# NETWORK POLICIES - Control traffic between pods
+# ═══════════════════════════════════════════════════════════════════════════
+
+---
+# Deny all ingress traffic by default
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-ingress
+  namespace: three-tier-app
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+
+---
+# Allow traffic to User Service
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-user-service
+  namespace: three-tier-app
+spec:
+  podSelector:
+    matchLabels:
+      app: user-service
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: order-service
+    - podSelector:
+        matchLabels:
+          app: react-frontend
+    ports:
+    - protocol: TCP
+      port: 8081
+
+---
+# Allow traffic to Order Service
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-order-service
+  namespace: three-tier-app
+spec:
+  podSelector:
+    matchLabels:
+      app: order-service
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: react-frontend
+    - podSelector:
+        matchLabels:
+          app: payment-service
+    ports:
+    - protocol: TCP
+      port: 8082
+
+---
+# Allow traffic to Payment Service
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-payment-service
+  namespace: three-tier-app
+spec:
+  podSelector:
+    matchLabels:
+      app: payment-service
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: order-service
+    ports:
+    - protocol: TCP
+      port: 8083
+
+---
+# Allow traffic to React Frontend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-ingress
+  namespace: three-tier-app
+spec:
+  podSelector:
+    matchLabels:
+      app: react-frontend
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector: {}  # Allow from Application Gateway
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+
+---
+# Allow outbound DNS for all pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: three-tier-app
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53
+
+---
+# Allow outbound traffic to external services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-external-egress
+  namespace: three-tier-app
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80

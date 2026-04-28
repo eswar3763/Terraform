@@ -42,3 +42,21 @@ variable "enabled_for_template_deployment" {
   type        = bool
   default     = true
 }
+
+variable "app_service_principal_id" {
+  description = "Principal ID of App Service managed identity (for Key Vault access)"
+  type        = string
+  default     = ""
+}
+
+variable "function_app_principal_id" {
+  description = "Principal ID of Function App managed identity (for Key Vault access)"
+  type        = string
+  default     = ""
+}
+
+variable "aks_kubelet_principal_id" {
+  description = "Principal ID of AKS kubelet identity (for Key Vault access via external-secrets)"
+  type        = string
+  default     = ""
+}

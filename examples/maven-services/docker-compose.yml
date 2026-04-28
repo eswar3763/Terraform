@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-dev
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: appdb
+      MYSQL_USER: azureuser
+      MYSQL_PASSWORD: password123
+      MYSQL_INITDB_SKIP_TZINFO: "yes"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+    networks:
+      - microservices
+
+  # User Service
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: ../Dockerfile.springboot
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: appdb
+      MYSQL_USER: azureuser
+      MYSQL_PASSWORD: password123
+      SPRING_OUTPUT_ANSI_ENABLED: "ALWAYS"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      timeout: 5s
+      retries: 10
+    networks:
+      - microservices
+
+  # Order Service
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: ../Dockerfile.springboot
+    container_name: order-service
+    ports:
+      - "8082:8082"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: appdb
+      MYSQL_USER: azureuser
+      MYSQL_PASSWORD: password123
+      USER_SERVICE_URL: http://user-service:8081
+      PAYMENT_SERVICE_URL: http://payment-service:8083
+      SPRING_OUTPUT_ANSI_ENABLED: "ALWAYS"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      timeout: 5s
+      retries: 10
+    networks:
+      - microservices
+
+  # Payment Service
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: ../Dockerfile.springboot
+    container_name: payment-service
+    ports:
+      - "8083:8083"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: appdb
+      MYSQL_USER: azureuser
+      MYSQL_PASSWORD: password123
+      API_KEY: dev-secret-api-key
+      SPRING_OUTPUT_ANSI_ENABLED: "ALWAYS"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      timeout: 5s
+      retries: 10
+    networks:
+      - microservices
+
+networks:
+  microservices:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local

@@ -1,0 +1,171 @@
+# Kubernetes Namespace and ConfigMap Setup
+# Apply this first: kubectl apply -f namespace-and-config.yaml
+
+---
+# Create namespace for the 3-tier application
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: three-tier-app
+  labels:
+    environment: prod
+
+---
+# ConfigMap containing application configuration
+# These values are populated from Terraform outputs
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: three-tier-app
+data:
+  # Database Connection Details (replace with terraform output values)
+  MYSQL_HOST: "mysql-3tier-prod.mysql.database.azure.com"
+  MYSQL_DATABASE: "appdb"
+  MYSQL_USER: "azureuser"
+  MYSQL_PORT: "3306"
+  
+  # ACR Registry Details (replace with terraform output values)
+  ACR_LOGIN_SERVER: "acr3tierappprod.azurecr.io"
+  
+  # Application Configuration
+  LOG_LEVEL: "INFO"
+  ENVIRONMENT: "production"
+  APP_VERSION: "1.0.0"
+  
+  # API Endpoints (will be updated after services are deployed)
+  USER_SERVICE_URL: "http://user-service:8081"
+  ORDER_SERVICE_URL: "http://order-service:8082"
+  PAYMENT_SERVICE_URL: "http://payment-service:8083"
+  REACT_API_BASE_URL: "/api"
+
+---
+# Secret for database password (store in Key Vault, retrieved via external-secrets operator)
+# This is a placeholder - in production, use Azure Key Vault + External Secrets Operator
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: three-tier-app
+type: Opaque
+stringData:
+  # IMPORTANT: In production, retrieve from Azure Key Vault using external-secrets operator
+  MYSQL_PASSWORD: "P@ssw0rd1234567890"
+  ACR_PASSWORD: "xxxxxxxxxxxxxxxxxxxxxx"
+  JWT_SECRET: "your-jwt-secret-key-here"
+  API_KEY: "your-api-key-here"
+
+---
+# Service Account for application pods
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-sa
+  namespace: three-tier-app
+  labels:
+    app: three-tier-app
+
+---
+# Network Policy to control traffic between services
+# Allow internal communication between microservices
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: app-network-policy
+  namespace: three-tier-app
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8081
+        - protocol: TCP
+          port: 8082
+        - protocol: TCP
+          port: 8083
+    # Allow pods to communicate with each other
+    - from:
+        - podSelector: {}
+  egress:
+    # Allow DNS lookups
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow outbound to all pods in namespace
+    - to:
+        - podSelector: {}
+    # Allow outbound to MySQL database
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 3306
+    # Allow outbound to external APIs
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+
+---
+# Resource Quota for namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: app-quota
+  namespace: three-tier-app
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: "20Gi"
+    limits.cpu: "20"
+    limits.memory: "40Gi"
+    pods: "100"
+    services: "10"
+    persistentvolumeclaims: "5"
+
+---
+# Limit Range for pod resource constraints
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: app-limit-range
+  namespace: three-tier-app
+spec:
+  limits:
+    - max:
+        cpu: "2"
+        memory: "2Gi"
+      min:
+        cpu: "100m"
+        memory: "128Mi"
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "250m"
+        memory: "256Mi"
+      type: Container
+    - max:
+        cpu: "4"
+        memory: "4Gi"
+      min:
+        cpu: "100m"
+        memory: "128Mi"
+      type: Pod
