@@ -1,0 +1,17 @@
+apiVersion: v2
+name: order-service
+description: Order Service - 3-Tier Microservices Architecture
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - order
+  - microservices
+  - java
+  - spring-boot
+home: https://github.com/eswar3763/Terraform
+sources:
+  - https://github.com/eswar3763/Terraform
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com

@@ -1,0 +1,161 @@
+# Default values for user-service
+# This is a YAML-formatted file.
+
+# Replica count for scaling
+replicaCount: 2
+
+# Image configuration
+image:
+  registry: "acrname.azurecr.io"
+  repository: "user-service"
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+# Image pull secrets for private registry
+imagePullSecrets:
+  - name: acr-secret
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  name: user-service
+  annotations: {}
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: user-service.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# Autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/ready
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Environment variables
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: "default"
+  - name: JAVA_OPTS
+    value: "-Xms128m -Xmx256m"
+  - name: LOG_LEVEL
+    value: "INFO"
+
+# Database configuration (from ConfigMap/Secret)
+database:
+  host: postgres-service
+  port: 5432
+  name: three_tier_db
+  username: postgres
+  passwordSecret: postgres-secret
+  passwordKey: password
+
+# Logging configuration
+logging:
+  level: INFO
+  format: json
+
+# Pod Disruption Budget (for HA)
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: three-tier-app
+
+# Service Account
+serviceAccount:
+  create: true
+  name: user-service-sa
+  annotations: {}
+
+# Node affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - user-service
+          topologyKey: kubernetes.io/hostname
+
+# Tolerations for node taints
+tolerations: []
+
+# Node selector
+nodeSelector: {}
+
+# Labels
+labels:
+  app: user-service
+  version: v1.0.0
+  team: platform
+
+# Annotations
+annotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"

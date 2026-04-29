@@ -1,0 +1,95 @@
+# Default values for order-service
+replicaCount: 2
+image:
+  registry: "acrname.azurecr.io"
+  repository: "order-service"
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+imagePullSecrets:
+  - name: acr-secret
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  name: order-service
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+livenessProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+readinessProbe:
+  httpGet:
+    path: /actuator/health/ready
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: "default"
+  - name: JAVA_OPTS
+    value: "-Xms128m -Xmx256m"
+  - name: LOG_LEVEL
+    value: "INFO"
+database:
+  host: postgres-service
+  port: 5432
+  name: three_tier_db
+  username: postgres
+  passwordSecret: postgres-secret
+  passwordKey: password
+logging:
+  level: INFO
+  format: json
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+serviceAccount:
+  create: true
+  name: order-service-sa
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - order-service
+          topologyKey: kubernetes.io/hostname
+labels:
+  app: order-service
+  version: v1.0.0
+  team: platform
+annotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"

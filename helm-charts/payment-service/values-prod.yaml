@@ -1,0 +1,36 @@
+replicaCount: 3
+image:
+  tag: "1.0.0"
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: "prod"
+  - name: JAVA_OPTS
+    value: "-Xms256m -Xmx512m -XX:+UseG1GC"
+database:
+  host: postgres-prod.database.azure.com
+  name: three_tier_prod
+ingress:
+  enabled: true
+  className: "azure-application-gateway"
+  hosts:
+    - host: payment-service.example.com
+podDisruptionBudget:
+  minAvailable: 2
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - payment-service
+        topologyKey: kubernetes.io/hostname

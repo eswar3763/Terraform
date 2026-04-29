@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: three-tier-app
+  namespace: argocd
+spec:
+  description: 3-Tier Microservices Application Project
+  
+  # RBAC roles
+  roles:
+    # Developer role - read and sync applications
+    - name: developers
+      policies:
+        - p, proj:three-tier-app:developers, applications, get, three-tier-app/*, allow
+        - p, proj:three-tier-app:developers, applications, sync, three-tier-app/*, allow
+      groups:
+        - developers@example.com
+    
+    # Admin role - full access
+    - name: admins
+      policies:
+        - p, proj:three-tier-app:admins, applications, *, three-tier-app/*, allow
+        - p, proj:three-tier-app:admins, repositories, *, *, allow
+      groups:
+        - admins@example.com
+    
+    # CI/CD role - can sync applications
+    - name: cicd
+      policies:
+        - p, proj:three-tier-app:cicd, applications, get, three-tier-app/*, allow
+        - p, proj:three-tier-app:cicd, applications, sync, three-tier-app/*, allow
+  
+  # Allowed source repositories
+  sourceRepos:
+    - 'https://github.com/eswar3763/Terraform.git'
+  
+  # Allowed destination clusters and namespaces
+  destinations:
+    - namespace: 'three-tier-app'
+      server: 'https://kubernetes.default.svc'
+    - namespace: 'three-tier-app-staging'
+      server: 'https://kubernetes.default.svc'
+    - namespace: 'three-tier-app-dev'
+      server: 'https://kubernetes.default.svc'
+  
+  # Cluster resources allowed (for RBAC)
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: ''
+      kind: PersistentVolume
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+  
+  # Namespace resources denied
+  namespaceResourceBlacklist:
+    - group: ''
+      kind: ResourceQuota
+    - group: ''
+      kind: LimitRange

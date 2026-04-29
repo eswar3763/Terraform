@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: payment-service
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: three-tier-app
+  
+  source:
+    repoURL: https://github.com/eswar3763/Terraform.git
+    targetRevision: main
+    path: helm-charts/payment-service
+    
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-prod.yaml
+      
+      parameters:
+        - name: image.tag
+          value: "1.0.0"
+      
+      releaseName: payment-service
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: three-tier-app
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    
+    retry:
+      limit: 5

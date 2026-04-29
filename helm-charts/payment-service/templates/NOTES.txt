@@ -1,0 +1,7 @@
+1. Check deployment:
+  kubectl rollout status deployment/{{ include "payment-service.fullname" . }} -n {{ .Release.Namespace }}
+
+2. View logs:
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "payment-service.name" . }} -f
+
+3. Access metrics at port 8080 /actuator/metrics

@@ -1,0 +1,10 @@
+replicaCount: 2
+image:
+  tag: "1.0.0-staging"
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 3
+database:
+  host: postgres-staging-service
+  name: three_tier_staging

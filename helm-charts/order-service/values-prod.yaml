@@ -1,0 +1,53 @@
+replicaCount: 3
+image:
+  tag: "1.0.0"
+  pullPolicy: Always
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 60
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: "prod"
+  - name: JAVA_OPTS
+    value: "-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+  - name: LOG_LEVEL
+    value: "WARN"
+database:
+  host: postgres-prod.database.azure.com
+  name: three_tier_prod
+  username: produser
+  passwordSecret: postgres-prod-secret
+ingress:
+  enabled: true
+  className: "azure-application-gateway"
+  hosts:
+    - host: order-service.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+livenessProbe:
+  initialDelaySeconds: 60
+readinessProbe:
+  initialDelaySeconds: 30
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - order-service
+        topologyKey: kubernetes.io/hostname

@@ -1,0 +1,18 @@
+apiVersion: v2
+name: user-service
+description: User Service - 3-Tier Microservices Architecture
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - user
+  - microservices
+  - java
+  - spring-boot
+home: https://github.com/eswar3763/Terraform
+sources:
+  - https://github.com/eswar3763/Terraform
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com
+icon: https://raw.githubusercontent.com/eswar3763/Terraform/main/docs/user-service-icon.png
