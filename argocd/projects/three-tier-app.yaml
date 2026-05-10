@@ -6,55 +6,64 @@ metadata:
 spec:
   description: 3-Tier Microservices Application Project
   
-  # RBAC roles
+  # RBAC Roles
   roles:
-    # Developer role - read and sync applications
+    # Developers role - read-only and sync permissions
     - name: developers
       policies:
         - p, proj:three-tier-app:developers, applications, get, three-tier-app/*, allow
         - p, proj:three-tier-app:developers, applications, sync, three-tier-app/*, allow
+        - p, proj:three-tier-app:developers, repositories, get, *, allow
       groups:
         - developers@example.com
     
-    # Admin role - full access
+    # Admin role - full permissions
     - name: admins
       policies:
         - p, proj:three-tier-app:admins, applications, *, three-tier-app/*, allow
         - p, proj:three-tier-app:admins, repositories, *, *, allow
+        - p, proj:three-tier-app:admins, projects, *, *, allow
       groups:
         - admins@example.com
     
-    # CI/CD role - can sync applications
+    # CI/CD role - sync only
     - name: cicd
       policies:
-        - p, proj:three-tier-app:cicd, applications, get, three-tier-app/*, allow
         - p, proj:three-tier-app:cicd, applications, sync, three-tier-app/*, allow
+        - p, proj:three-tier-app:cicd, applications, get, three-tier-app/*, allow
   
   # Allowed source repositories
   sourceRepos:
     - 'https://github.com/eswar3763/Terraform.git'
+    - 'https://charts.bitnami.com/bitnami'
   
   # Allowed destination clusters and namespaces
   destinations:
     - namespace: 'three-tier-app'
       server: 'https://kubernetes.default.svc'
-    - namespace: 'three-tier-app-staging'
+    - namespace: 'argocd'
       server: 'https://kubernetes.default.svc'
     - namespace: 'three-tier-app-dev'
       server: 'https://kubernetes.default.svc'
+    - namespace: 'three-tier-app-staging'
+      server: 'https://kubernetes.default.svc'
   
-  # Cluster resources allowed (for RBAC)
+  # Cluster resources allowed (creation)
   clusterResourceWhitelist:
     - group: ''
       kind: Namespace
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRole
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRoleBinding
     - group: ''
       kind: PersistentVolume
-    - group: rbac.authorization.k8s.io
-      kind: ClusterRoleBinding
   
-  # Namespace resources denied
+  # Namespace resources denied (prevent deletion)
   namespaceResourceBlacklist:
     - group: ''
       kind: ResourceQuota
     - group: ''
       kind: LimitRange
+    - group: 'policy'
+      kind: PodDisruptionBudget
