@@ -159,3 +159,82 @@ annotations:
   prometheus.io/scrape: "true"
   prometheus.io/port: "8080"
   prometheus.io/path: "/actuator/prometheus"
+
+# Canary Deployment Configuration (Flagger)
+canary:
+  enabled: false  # Set to true to enable canary deployments
+  
+  # Analysis settings
+  analysis:
+    interval: 5m  # Check metrics every 5 minutes
+    threshold: 5  # Number of successful checks before promotion
+    maxWeight: 50  # Max traffic weight for canary (50%)
+    stepWeight: 5  # Increase traffic by 5% each interval
+    
+    # Metrics to monitor during canary
+    metrics:
+      errorRate:
+        enabled: true
+        interval: 1m
+        maxError: 1  # Max 1% error rate
+        condition: "ok"
+      
+      latency:
+        enabled: true
+        interval: 1m
+        maxLatency: 500  # Max 500ms p99 latency
+        condition: "ok"
+      
+      successRate:
+        enabled: true
+        interval: 1m
+        minSuccess: 99  # Min 99% success rate
+        condition: "ok"
+    
+    # Webhooks for custom validation
+    webhooks:
+      smokeTest:
+        enabled: true
+        timeout: 5s
+      
+      loadTest:
+        enabled: false  # Disable by default to avoid excessive load
+        timeout: 5s
+  
+  # VirtualService configuration
+  virtualService:
+    timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+  
+  # DestinationRule configuration
+  destinationRule:
+    trafficPolicy:
+      connectionPool:
+        tcp:
+          maxConnections: 100
+        http:
+          http1MaxPendingRequests: 100
+          http2MaxRequests: 1000
+          maxRequestsPerConnection: 2
+          h2UpgradePolicy: UPGRADE
+      
+      outlierDetection:
+        consecutiveErrors: 5
+        interval: 30s
+        baseEjectionTime: 30s
+        maxEjectionPercent: 50
+        minRequestVolume: 5
+      
+      loadBalancer:
+        simple: ROUND_ROBIN
+  
+  # ServiceMonitor for Prometheus metrics
+  servicemonitor:
+    metricsPath: "/actuator/prometheus"
+    interval: 15s
+    scrapeTimeout: 10s
+  
+  # Skip analysis and go straight to completion
+  skipAnalysis: false

@@ -1,0 +1,43 @@
+# Istio DestinationRule for traffic policy and circuit breaking
+{{- if .Values.canary.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ include "user-service.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "user-service.labels" . | nindent 4 }}
+spec:
+  host: {{ include "user-service.fullname" . }}
+  
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: {{ .Values.canary.destinationRule.trafficPolicy.connectionPool.tcp.maxConnections | default 100 }}
+      http:
+        http1MaxPendingRequests: {{ .Values.canary.destinationRule.trafficPolicy.connectionPool.http.http1MaxPendingRequests | default 100 }}
+        http2MaxRequests: {{ .Values.canary.destinationRule.trafficPolicy.connectionPool.http.http2MaxRequests | default 1000 }}
+        maxRequestsPerConnection: {{ .Values.canary.destinationRule.trafficPolicy.connectionPool.http.maxRequestsPerConnection | default 2 }}
+        h2UpgradePolicy: {{ .Values.canary.destinationRule.trafficPolicy.connectionPool.http.h2UpgradePolicy | default "UPGRADE" }}
+    
+    outlierDetection:
+      consecutiveErrors: {{ .Values.canary.destinationRule.trafficPolicy.outlierDetection.consecutiveErrors | default 5 }}
+      interval: {{ .Values.canary.destinationRule.trafficPolicy.outlierDetection.interval | default "30s" }}
+      baseEjectionTime: {{ .Values.canary.destinationRule.trafficPolicy.outlierDetection.baseEjectionTime | default "30s" }}
+      maxEjectionPercent: {{ .Values.canary.destinationRule.trafficPolicy.outlierDetection.maxEjectionPercent | default 50 }}
+      minRequestVolume: {{ .Values.canary.destinationRule.trafficPolicy.outlierDetection.minRequestVolume | default 5 }}
+      splitExternalLocalOriginErrors: true
+    
+    loadBalancer:
+      simple: {{ .Values.canary.destinationRule.trafficPolicy.loadBalancer.simple | default "ROUND_ROBIN" }}
+  
+  # Subsets for canary/stable traffic split
+  subsets:
+    - name: canary
+      labels:
+        version: canary
+    
+    - name: stable
+      labels:
+        version: stable
+{{- end }}

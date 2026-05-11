@@ -1,0 +1,43 @@
+# Istio VirtualService for traffic management
+{{- if .Values.canary.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "user-service.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "user-service.labels" . | nindent 4 }}
+spec:
+  hosts:
+    - {{ include "user-service.fullname" . }}
+    - {{ include "user-service.fullname" . }}.{{ .Release.Namespace }}
+    - {{ include "user-service.fullname" . }}.{{ .Release.Namespace }}.svc
+    - {{ include "user-service.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: {{ include "user-service.fullname" . }}
+            port:
+              number: {{ .Values.service.port }}
+          weight: 100
+      timeout: {{ .Values.canary.virtualService.timeout | default "30s" }}
+      retries:
+        attempts: {{ .Values.canary.virtualService.retries.attempts | default 3 }}
+        perTryTimeout: {{ .Values.canary.virtualService.retries.perTryTimeout | default "10s" }}
+      corsPolicy:
+        allowOrigins:
+          - exact: "*"
+        allowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        allowHeaders:
+          - "*"
+        maxAge: "24h"
+{{- end }}

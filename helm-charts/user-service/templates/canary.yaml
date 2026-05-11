@@ -1,0 +1,115 @@
+# Flagger Canary Resource
+{{- if .Values.canary.enabled }}
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: {{ include "user-service.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "user-service.labels" . | nindent 4 }}
+  annotations:
+    deployment.kubernetes.io/revision: "{{ .Release.Revision }}"
+spec:
+  # Target deployment
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "user-service.fullname" . }}
+  
+  # Service configuration
+  service:
+    name: {{ .Values.service.name }}
+    port: {{ .Values.service.port }}
+    targetPort: {{ .Values.service.targetPort }}
+    portName: http
+  
+  # Analysis configuration
+  analysis:
+    # Analysis interval
+    interval: {{ .Values.canary.analysis.interval }}
+    
+    # Number of successful checks before promotion
+    threshold: {{ .Values.canary.analysis.threshold }}
+    
+    # Maximum traffic weight for canary
+    maxWeight: {{ .Values.canary.analysis.maxWeight }}
+    
+    # Traffic increment per interval
+    stepWeight: {{ .Values.canary.analysis.stepWeight }}
+    
+    # Metrics to analyze
+    metrics:
+      {{- if .Values.canary.analysis.metrics.errorRate.enabled }}
+      - name: error_rate
+        interval: {{ .Values.canary.analysis.metrics.errorRate.interval | default "1m" }}
+        thresholdRange:
+          max: {{ .Values.canary.analysis.metrics.errorRate.maxError | default 1 }}
+        condition: {{ .Values.canary.analysis.metrics.errorRate.condition | default "ok" }}
+      {{- end }}
+      
+      {{- if .Values.canary.analysis.metrics.latency.enabled }}
+      - name: latency
+        interval: {{ .Values.canary.analysis.metrics.latency.interval | default "1m" }}
+        thresholdRange:
+          max: {{ .Values.canary.analysis.metrics.latency.maxLatency | default 500 }}
+        condition: {{ .Values.canary.analysis.metrics.latency.condition | default "ok" }}
+      {{- end }}
+      
+      {{- if .Values.canary.analysis.metrics.successRate.enabled }}
+      - name: request_success_rate
+        interval: {{ .Values.canary.analysis.metrics.successRate.interval | default "1m" }}
+        thresholdRange:
+          min: {{ .Values.canary.analysis.metrics.successRate.minSuccess | default 99 }}
+        condition: {{ .Values.canary.analysis.metrics.successRate.condition | default "ok" }}
+      {{- end }}
+    
+    # Webhooks for validation
+    {{- if .Values.canary.analysis.webhooks.smokeTest.enabled }}
+    webhooks:
+      - name: smoke-test
+        url: http://flagger-loadtester/
+        timeout: {{ .Values.canary.analysis.webhooks.smokeTest.timeout | default "5s" }}
+        metadata:
+          type: smoke
+          cmd: "curl -sd 'test' http://{{ .Values.service.name }}:{{ .Values.service.port }}/actuator/health | grep UP"
+    {{- end }}
+    
+    {{- if .Values.canary.analysis.webhooks.loadTest.enabled }}
+      - name: load-test
+        url: http://flagger-loadtester/
+        timeout: {{ .Values.canary.analysis.webhooks.loadTest.timeout | default "5s" }}
+        metadata:
+          type: load
+          cmd: "hey -z 1m -q 10 -c 2 http://{{ .Values.service.name }}:{{ .Values.service.port }}/health"
+    {{- end }}
+  
+  # Sync policy
+  skipAnalysis: {{ .Values.canary.skipAnalysis | default false }}
+
+  # Traffic policy
+  {{- if .Values.canary.trafficPolicy }}
+  trafficPolicy:
+    {{- if .Values.canary.trafficPolicy.connectionPool }}
+    connectionPool:
+      {{- if .Values.canary.trafficPolicy.connectionPool.tcp }}
+      tcp:
+        maxConnections: {{ .Values.canary.trafficPolicy.connectionPool.tcp.maxConnections | default 100 }}
+      {{- end }}
+      {{- if .Values.canary.trafficPolicy.connectionPool.http }}
+      http:
+        http1MaxPendingRequests: {{ .Values.canary.trafficPolicy.connectionPool.http.http1MaxPendingRequests | default 100 }}
+        http2MaxRequests: {{ .Values.canary.trafficPolicy.connectionPool.http.http2MaxRequests | default 1000 }}
+        maxRequestsPerConnection: {{ .Values.canary.trafficPolicy.connectionPool.http.maxRequestsPerConnection | default 2 }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.canary.trafficPolicy.outlierDetection }}
+    outlierDetection:
+      consecutiveErrors: {{ .Values.canary.trafficPolicy.outlierDetection.consecutiveErrors | default 5 }}
+      interval: {{ .Values.canary.trafficPolicy.outlierDetection.interval | default "30s" }}
+      baseEjectionTime: {{ .Values.canary.trafficPolicy.outlierDetection.baseEjectionTime | default "30s" }}
+      maxEjectionPercent: {{ .Values.canary.trafficPolicy.outlierDetection.maxEjectionPercent | default 50 }}
+      minRequestVolume: {{ .Values.canary.trafficPolicy.outlierDetection.minRequestVolume | default 5 }}
+    {{- end }}
+  {{- end }}
+
+{{- end }}

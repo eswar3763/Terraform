@@ -76,3 +76,42 @@ affinity:
               values:
                 - user-service
         topologyKey: kubernetes.io/hostname
+
+# Canary Deployment - ENABLED for Production
+canary:
+  enabled: true  # Enable canary deployments in production
+  
+  analysis:
+    interval: 5m  # Analyze every 5 minutes
+    threshold: 5  # 5 successful checks before full promotion
+    maxWeight: 50  # Max 50% traffic to canary
+    stepWeight: 5  # Increase by 5% each interval (5% → 10% → 25% → 50% → 100%)
+    
+    metrics:
+      errorRate:
+        enabled: true
+        interval: 1m
+        maxError: 1  # Strict: max 1% error rate
+        condition: "ok"
+      
+      latency:
+        enabled: true
+        interval: 1m
+        maxLatency: 500  # Strict: max 500ms p99 latency
+        condition: "ok"
+      
+      successRate:
+        enabled: true
+        interval: 1m
+        minSuccess: 99  # Strict: min 99% success rate
+        condition: "ok"
+    
+    webhooks:
+      smokeTest:
+        enabled: true
+        timeout: 5s
+      loadTest:
+        enabled: true  # Enable load testing in production
+        timeout: 30s
+  
+  skipAnalysis: false  # Don't skip analysis in production
